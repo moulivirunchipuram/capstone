@@ -15,7 +15,15 @@ from pyspark.sql import types as T
 
     
 def report_unique_info(df,df_name,column_list):
-    print("=============")
+    """
+        This is a generic utility api to check how many unique 
+        values are there in a column
+        
+        :param df : input dataframe
+        :param df_name : name of the dataframe (for printing)
+        :param column_list: list of columns to be checked for unique values
+    """
+    
     print(f"Displaying number of unique values for given columns in  {df_name} dataframe")
     for column in column_list:
         unique_values = df[column].unique()
@@ -23,6 +31,12 @@ def report_unique_info(df,df_name,column_list):
         
 
 def cleanup_missing_column_values(df,column_list):
+    """
+        Remove rows with null values for columns specified in column_list
+        
+        :param df : input dataframe
+        :param column_list: list of columns to be checked for null values
+    """
     print(f"removing rows with null values for {column_list}")
     print(f"total rows before clean up {df.shape[0]}")
     for column in column_list:
@@ -32,20 +46,6 @@ def cleanup_missing_column_values(df,column_list):
     print(f"total rows after clean up {df.shape[0]}")
     
     return df
-
-
-# #The following api was suggested by mentor
-# def convert_sas_to_date(sas_date):
-#     print(f"sas_date {sas_date}")
-#     if sas_date is None:
-#         dt = None
-#     else:
-#         dt = datetime.fromordinal(datetime(1960, 1, 1).toordinal() + int(sas_date))
-#     return dt
-    
-
-
-
 
 ## write to parquet 
 def output_to_parquet_file(df, output_path, table_name):
@@ -64,8 +64,22 @@ def output_to_parquet_file(df, output_path, table_name):
     df.write.mode("overwrite").parquet(file_path)
     
     print("Write complete!")
+
     
+def run_record_count_check(df, table_name):
+    """Check row count for data sanity. If no records found, report error 
+        :param input_df: spark dataframe to check counts on.
+        :param table_name: name of table
+    """
     
+    count = df.count()
+
+    if (count == 0):
+        print("Record count check failed for {} table with zero records!".format(table_name))
+    else:
+        print("Record count check passed for {} table with record count: {} records.".format(table_name, count))
+        
+    return 0    
     
     
           

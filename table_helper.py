@@ -21,6 +21,15 @@ import util as util
 
 
 def create_status(input_df, output_path):
+    """
+        Get status info from fact and write to parquet
+        
+        :param input_df: dataframe of input data.
+        :param output_path: path to write data to.
+        :return: status dimension dataframe
+    """    
+    
+    
     output_df = input_df.withColumn("status_flag_id", monotonically_increasing_id()) \
                 .select(["status_flag_id", "entdepa", "entdepd", "matflag"]) \
                 .withColumnRenamed("entdepa", "arrival_flag")\
@@ -32,8 +41,7 @@ def create_status(input_df, output_path):
     
     return output_df
 
-def create_time(input_df, output_path):
-    print("creating time table")
+def create_time(input_df, output_path):   
     """
         Get time info from fact and extract year, month, day, week, weekday
         and write to parquet
@@ -64,7 +72,7 @@ def create_time(input_df, output_path):
                 .withColumn('week', F.weekofyear('arrival_date')) \
                 .withColumn('weekday', F.dayofweek('arrival_date'))\
                 .select(["arrdate", "arrival_date", "day", "month", "year", "week", "weekday"])
-#                 .dropDuplicates(["arrdate"])
+
     
     util.output_to_parquet_file(output_df, output_path, "time")
     
@@ -93,7 +101,7 @@ def create_visa(input_df, output_path):
 def create_state(input_df, output_path):
     """
         Get state specific data and create dataframe and write data into parquet files.
-        Here we will group the information by state code
+        Here we will group the information by state code to compute sum and average 
         Rename the columns from Xxxx Yyyy to xxx_yyy
         Drop rows with null values
         
@@ -115,13 +123,13 @@ def create_state(input_df, output_path):
                 .withColumnRenamed("Race", "race")\
                 .withColumnRenamed("Count", "count")
     
-    output_df = output_df.groupBy(col("state_code"), col("state").alias("state")).agg(
-                sum('median_age').alias("median_age"),\
+    output_df = output_df.groupBy("state_code","state").agg(
+                mean('median_age').alias("median_age"),\
                 sum("total_population").alias("total_population"),\
                 sum("male_population").alias("male_population"), \
                 sum("female_population").alias("female_population"),\
                 sum("foreign_born").alias("foreign_born"), \
-                sum("average_household_size").alias("average_household_size")
+                sum("avg_household_size").alias("average_household_size")
                 ).dropna()
     
     util.output_to_parquet_file(output_df, output_path, "state")
@@ -131,7 +139,7 @@ def create_state(input_df, output_path):
 
 def create_airport(input_df, output_path):
     """
-        Gather airport data, create dataframe and write data into parquet files.
+        Collect airport data, create dataframe and write data into parquet files.
         
         :param input_df: dataframe of input data.
         :param output_data: path to write data to.
@@ -148,16 +156,17 @@ def create_airport(input_df, output_path):
 
 def create_temperature(input_df, output_path):
     """
-        Gather temperature data, create dataframe and write data into parquet files.
+        Collect temperature data, get average temperature
+        by grouping by country
         
         :param input_df: dataframe of input data.
         :param output_data: path to write data to.
         :return: dataframe representing temperature dimension
     """
-    
-    output_df = input_df.groupBy(col("Country").alias("country")).agg(
-                round(mean('AverageTemperature'), 2).alias("average_temperature"),\
-                round(mean("AverageTemperatureUncertainty"),2).alias("average_temperature_uncertainty")
+    print("creating temperature table data")
+    output_df = input_df.groupBy("Country","country").agg(
+                mean('AverageTemperature').alias("average_temperature"),\
+                mean("AverageTemperatureUncertainty").alias("average_temperature_uncertainty")
             ).dropna()\
             .withColumn("temperature_id", monotonically_increasing_id()) \
             .select(["temperature_id", "country", "average_temperature", "average_temperature_uncertainty"])
@@ -168,11 +177,11 @@ def create_temperature(input_df, output_path):
 
 def create_country(input_df, output_path):
     """
-        Gather country data, create dataframe and write data into parquet files.
+        Collect country data, create dataframe and write data into parquet files.
         
         :param input_df: dataframe of input data.
-        :param output_data: path to write data to.
-        :return: dataframe representing country dimension
+        :param output_path: path of output parquet file.
+        :return: country dimension( in this case it is the input df)
     """
     
     util.output_to_parquet_file(input_df, output_path, "country")
@@ -181,18 +190,16 @@ def create_country(input_df, output_path):
 
 def create_immigration(immigration_spark, output_path, spark):
     """
-        Gather immigration data, create dataframe and write data into parquet files.
-        
+        Collect all immigration data, join dimension tables, create data frame and write to parquet file.        
         :param input_df: dataframe of input data.
-        :param output_data: path to write data to.
-        :return: dataframe representing immigration fact
+        :param output_path: path of output parquet file 
+        :return: final immigration fact data frame
     """
     
     airport = spark.read.parquet(output_path+"airport")
     country = spark.read.parquet(output_path+"country")
     temperature = spark.read.parquet(output_path+"temperature")
     country_temperature = spark.read.parquet(output_path+"country_temperature_mapping")
-#     migrant = spark.read.parquet(output_path+"/migrant")
     state = spark.read.parquet(output_path+"state")
     status = spark.read.parquet(output_path+"status")
     time = spark.read.parquet(output_path+"time")
@@ -201,18 +208,17 @@ def create_immigration(immigration_spark, output_path, spark):
     # join all tables to immigration
     output_df = immigration_spark.select(["*"])\
                 .join(airport, (immigration_spark.i94port == airport.ident), how='full')\
-                .join(country_temperature, (immigration_spark.i94res == country_temperature.country_code), how='full')\
-                .join(migrant, (immigration_spark.biryear == migrant.birth_year) & (immigration_spark.gender == migrant.gender), how='full')\
-                .join(status, (immigration_spark.entdepa == status.arrival_flag) & (immigration_spark.entdepd == status.departure_flag) &\
-                      (immigration_spark.matflag == status.match_flag), how='full')\
+                .join(country_temperature, (immigration_spark.i94res == country_temperature.code), how='full')\
+                .join(status, (immigration_spark.entdepa == status.arrival_flag) & (immigration_spark.entdepd == status.departure_flag)\
+                    & (immigration_spark.matflag == status.match_flag), how='full')\
                 .join(visa, (immigration_spark.i94visa == visa.i94visa) & (immigration_spark.visatype == visa.visatype)\
-                      & (immigration_spark.visapost == visa.visapost), how='full')\
+                    & (immigration_spark.visapost == visa.visapost), how='full')\
                 .join(state, (immigration_spark.i94addr == state.state_code), how='full')\
                 .join(time, (immigration_spark.arrdate == time.arrdate), how='full')\
                 .where(col('cicid').isNotNull())\
-                .select(["cicid", "i94res", "depdate", "i94mode", "i94port", "i94cit", "i94addr", "airline", "fltno", "ident", "country_code",\
-                         "temperature_id", "migrant_id", "status_flag_id", "visa_id", "state_code", time.arrdate.alias("arrdate")])
+                .select(["cicid", "i94res", "depdate", "i94mode", "i94port", "i94cit", "i94addr", "airline", "fltno", "ident", "code",\
+                         "temperature_id", "status_flag_id", "visa_id", "state_code", country_temperature.country,time.arrdate.alias("arrdate")])
     
-    util.output_to_parquet_file(df, output_path, "immigration")
+    util.output_to_parquet_file(output_df, output_path, "immigration")
     
     return output_df
