@@ -1,0 +1,84 @@
+---------------------
+-- Data Dictionary --
+---------------------
+
+Country
+-------
+code:Unique Identifier (PK)
+country: Country name
+
+
+Temperature
+-----------
+temperature_id: Unique Identifer (PK)
+country: Name of country
+average_temperature: Average Temperature in Celsius
+average_temperature_uncertainty: Average Temperature with some level of uncertainty
+
+State
+-----
+state_code Unique Identifer (PK)
+state: State in USA
+median_age: Median age of population in the state
+male_population: Total male population
+female_population: Total female population
+total_population: Total population
+avg_household_size: Average number of people in a family
+foreign_born: Number of foreign born residents
+
+Status
+------
+status_flag_id: Unique Identifer (PK)
+arrival_flag: Arrival Flag
+departure_flag: Departure Flag (departed, deceased or I-94 lost)
+match_flag: Flag that matches arrival and departure records
+
+Airport
+-------
+ident: Unique Identifer (PK)
+type: Airport type
+iata_code: International Airport Code
+name: Airport name
+iso_country: ISO Code of the country of airport
+iso_region: ISO Code of region of airport
+municipality: City or Municipality of airport
+gps_code: GPS Location of the airport
+coordinates: Airport coordintaes
+elevation_ft: Airport's elevation
+
+Time
+----
+arrdate: Unique Identifer (PK)
+arrival_date: Arrival date
+day: Day of arrival 
+month: Month of arrival
+year:Year of arrival
+week:Week of arrival
+weekday:Day of week of arrival
+
+visa
+----
+visa_id: Unique Identifer (PK)
+i94visa: Visa code (3 categories)
+visatype: Class of admission to the USA
+visapost: Department of State where Visa was issued
+
+Immigration
+-----------
+cicid: Unique Identifer (PK)
+i94res: 3 digit state code
+depdate: Departure date from USA 
+i94mode: Mode of arrival (1 Air , 2 Sea, 3 Land, 9 Not reported)
+i94port: Port of arrival
+i94cit: 3 digit code for immigrant's country of birth
+i94addr: State of Arrival in the USA
+airline: Airline used
+fltno: Flight No.
+ident: Unique Identifer (FK > Airport.ident)
+code: Immigrant's country of residence (FK > Country.code)
+temperature_id: Unique Identifier (FK > Temperature.temperature_id)
+status_flag_id: Unique Identifier (FK > Status.status_flag_id)
+visa_id: Unique Identifier (FK > Visa.visa_id)
+state_code (FK > State.state_code)
+country
+arrdate (FK > Time.arrdate)
