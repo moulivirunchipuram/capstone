@@ -219,6 +219,6 @@ def create_immigration(immigration_spark, output_path, spark):
                 .select(["cicid", "i94res", "depdate", "i94mode", "i94port", "i94cit", "i94addr", "airline", "fltno", "ident", "code",\
                          "temperature_id", "status_flag_id", "visa_id", "state_code", country_temperature.country,time.arrdate.alias("arrdate")])
     
-    util.output_to_parquet_file(output_df, output_path, "immigration")
+    #util.output_to_parquet_file(output_df, output_path, "immigration")
     
     return output_df
